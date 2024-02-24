@@ -25,7 +25,7 @@ app.get("/download", async (req, res) => {
 
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename*=UTF-8 ''${encodeURIComponent(title)}.mp4`
+      `attachment; filename=${encodeURIComponent(title)}.mp4`
     );
     ytdl(url, { format }).pipe(res);
   } catch (error) {
@@ -45,6 +45,16 @@ app.get("/thumbnail", async (req, res) => {
   }
 });
 
+app.get("/videos", async (req, res) => {
+  try {
+    const url = req.query.url;
+    const info = await ytdl.getInfo(url);
+    res.send(info.formats)
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
+  }
+});
 
 const port = process.env.PORT || 3000;
 
