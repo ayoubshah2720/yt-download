@@ -19,7 +19,7 @@ app.get("/download", async (req, res) => {
   try {
     const url = req.query.url;
     const info = await ytdl.getInfo(url);
-
+    console.log('infoinfoinfoinfoinfoinfoinfo',info.videoDetails.thumbnails)
     const format = ytdl.chooseFormat(info.formats, { quality: "highest" });
     const title = info.videoDetails.title;
 
@@ -33,6 +33,18 @@ app.get("/download", async (req, res) => {
     res.status(500).send(error.message);
   }
 });
+
+app.get("/thumbnail", async (req, res) => {
+  try {
+    const url = req.query.url;
+    const info = await ytdl.getInfo(url);
+    res.send(info.videoDetails.thumbnails)
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
+  }
+});
+
 
 const port = process.env.PORT || 3000;
 
