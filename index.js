@@ -11,12 +11,12 @@ app.use(express.static("public"));
 
 app.set("view engine", "ejs");
 
-const corsOptions = {
-  origin: 'http://localhost:4200/', //Front-end url.
-  credential: true,
-  optionSuccessStatus: 200,
-  exposedHeaders: '**',
-}
+// const corsOptions = {
+//   origin: 'http://localhost:4200/', //Front-end url.
+//   credential: true,
+//   optionSuccessStatus: 200,
+//   exposedHeaders: '**',
+// }
 app.get("/", (req, res) => {
   res.send("Welcome to ytdl App.");
 });
