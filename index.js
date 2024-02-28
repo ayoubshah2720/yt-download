@@ -2,6 +2,28 @@ import express from "express";
 import cors from "cors";
 import ytdl from "ytdl-core";
 
+import cluster from 'cluster'
+import http from 'http'
+import { cpus } from 'os';
+
+const numCPUs = cpus().length;
+
+if (cluster.isMaster) {
+  console.log(`Master ${process.pid} is running`);
+
+  // Fork workers equal to the number of CPU cores
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
+
+  // Listen for exit event and fork a new worker if one exits
+  cluster.on('exit', (worker, code, signal) => {
+    console.log(`Worker ${worker.process.pid} died`);
+    cluster.fork();
+  });
+
+ } else {
+
 const app = express();
 
 app.use(cors());
@@ -91,3 +113,5 @@ const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server started on port ${port}`);
 });
+
+}
