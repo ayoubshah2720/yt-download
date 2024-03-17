@@ -53,7 +53,7 @@ app.get("/download", async (req, res) => {
   try {
     const url = req.query.url;
     const info = await ytdl.getInfo(url);
-    console.log('infoinfoinfoinfoinfoinfoinfo',info.videoDetails.thumbnails)
+    console.log('infoinfoinfoinfoinfoinfoinfo',info.formats)
     const format = ytdl.chooseFormat(info.formats, { quality: "highest" });
     const title = info.videoDetails.title;
 
