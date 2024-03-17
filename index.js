@@ -52,9 +52,11 @@ app.get("/download", async (req, res) => {
   // http://localhost:3000/download?url=https://www.youtube.com/watch?v=D6ObIEU2UZ4
   try {
     const url = req.query.url;
+    const videoQuality = req.query.type;
     const info = await ytdl.getInfo(url);
-    console.log('infoinfoinfoinfoinfoinfoinfo',info.formats)
-    const format = ytdl.chooseFormat(info.formats, { quality: "highest" });
+    // console.log('qualityqualityqualityquality',req.query);
+    // console.log('infoinfoinfoinfoinfoinfoinfo',info.formats);
+    const format = ytdl.chooseFormat(info.formats, { quality: videoQuality });
     const title = info.videoDetails.title;
 
     res.setHeader(
