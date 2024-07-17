@@ -1,7 +1,8 @@
 import express from "express";
 import cors from "cors";
 import ytdl from "ytdl-core";
-
+import fs from 'fs-extra';
+import path from "path";
 import cluster from 'cluster'
 import http from 'http'
 import { cpus } from 'os';
@@ -33,9 +34,8 @@ app.use((req, res, next) => {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static("public"));
-
 app.set("view engine", "ejs");
+app.use(express.static('public'));
 
 // const corsOptions = {
 //   origin: 'http://localhost:4200/', //Front-end url.
@@ -43,32 +43,104 @@ app.set("view engine", "ejs");
 //   optionSuccessStatus: 200,
 //   exposedHeaders: '**',
 // }
-app.get("/", (req, res) => {
-  res.send("Welcome to ytdl App.");
+// app.get("/", (req, res) => {
+//   res.send("Welcome to ytdl App.");
+// });
+app.get('/', (req, res) => {
+  res.render('index');
 });
 
-app.get("/download", async (req, res) => {
-  // how to pass parameter in url
-  // http://localhost:3000/download?url=https://www.youtube.com/watch?v=D6ObIEU2UZ4
-  try {
-    const url = req.query.url;
-    const videoQuality = req.query.type || '360p';
-    const info = await ytdl.getInfo(url);
-    // console.log('qualityqualityqualityquality',req.query);
-    // console.log('infoinfoinfoinfoinfoinfoinfo',info.formats);
-    const format = ytdl.chooseFormat(info.formats, { quality: videoQuality });
-    const title = info.videoDetails.title;
+// app.get("/download", async (req, res) => {
+//   // how to pass parameter in url
+//   // http://localhost:3000/download?url=https://www.youtube.com/watch?v=D6ObIEU2UZ4
+//   try {
+//     const url = req.query.url;
+//     const videoQuality = req.query.type || '360p';
+//     const info = await ytdl.getInfo(url);
+//     // console.log('qualityqualityqualityquality',req.query);
+//     // console.log('infoinfoinfoinfoinfoinfoinfo',info.formats);
+//     const format = ytdl.chooseFormat(info.formats, { quality: videoQuality });
+//     const title = info.videoDetails.title;
 
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=${encodeURIComponent(title)}.mp4`
-    );
-    ytdl(url, { format }).pipe(res);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send(error.message);
+//     res.setHeader(
+//       "Content-Disposition",
+//       `attachment; filename=${encodeURIComponent(title)}.mp4`
+//     );
+//     ytdl(url, { format }).pipe(res);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).send(error.message);
+//   }
+// });
+
+app.get('/download', async (req, res) => {
+  const url = req.query.url;
+  const quality = req.query.quality;
+
+  if (!quality) {
+      try {
+          const info = await ytdl.getInfo(url);
+          const formats = ytdl.filterFormats(info.formats, 'videoandaudio');
+          res.render('download', { formats, url });
+      } catch (error) {
+          res.status(400).send('Invalid URL');
+      }
+  } else {
+      res.header('Content-Disposition', 'attachment; filename="video.mp4"');
+      ytdl(url, { filter: format => format.itag === parseInt(quality) })
+        .on('error', (error) => {
+          console.error('Error during download:', error);
+          res.status(500).send('Error downloading video');
+        })
+        .pipe(res);
   }
 });
+
+// app.get('/download', async (req, res) => {
+//   const url = req.query.url;
+//   const quality = req.query.quality;
+
+//   if (!quality) {
+//       try {
+//           const info = await ytdl.getInfo(url);
+//           const formats = ytdl.filterFormats(info.formats, 'videoandaudio');
+//           res.render('download', { formats, url });
+//       } catch (error) {
+//           res.status(400).send('Invalid URL');
+//       }
+//   } else {
+//       try {
+//           const filePath = path.resolve(__dirname, 'downloads', `video-${quality}.mp4`);
+//           await fs.ensureDir(path.dirname(filePath));
+          
+//           // Check if the file already exists
+//           if (!await fs.pathExists(filePath)) {
+//               const stream = ytdl(url, { filter: format => format.itag === parseInt(quality) })
+//                   .pipe(fs.createWriteStream(filePath));
+
+//               stream.on('finish', () => {
+//                   res.download(filePath, 'video.mp4', async (err) => {
+//                       if (err) {
+//                           console.error(err);
+//                       }
+//                       // Optionally delete the file after download
+//                       await fs.remove(filePath);
+//                   });
+//               });
+//           } else {
+//               res.download(filePath, 'video.mp4', async (err) => {
+//                   if (err) {
+//                       console.error(err);
+//                   }
+//                   // Optionally delete the file after download
+//                   await fs.remove(filePath);
+//               });
+//           }
+//       } catch (error) {
+//           res.status(500).send('Error downloading video');
+//       }
+//   }
+// });
 
 app.get('/getVideoInfo', async (req, res) => {
   const videoURL = req.query.url;
