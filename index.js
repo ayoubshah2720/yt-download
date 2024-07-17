@@ -88,11 +88,7 @@ app.get('/download', async (req, res) => {
   } else {
       res.header('Content-Disposition', 'attachment; filename="video.mp4"');
       ytdl(url, { filter: format => format.itag === parseInt(quality) })
-        .on('error', (error) => {
-          console.error('Error during download:', error);
-          res.status(500).send('Error downloading video');
-        })
-        .pipe(res);
+          .pipe(res);
   }
 });
 
