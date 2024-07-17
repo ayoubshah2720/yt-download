@@ -6,6 +6,7 @@ import path from "path";
 import cluster from 'cluster'
 import http from 'http'
 import { cpus } from 'os';
+import { fileURLToPath } from 'url';
 
 const numCPUs = cpus().length;
 
@@ -36,6 +37,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
 app.use(express.static('public'));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.set('views', path.join(__dirname, 'views'));
 
 // const corsOptions = {
 //   origin: 'http://localhost:4200/', //Front-end url.
@@ -73,25 +76,6 @@ app.get('/', (req, res) => {
 //   }
 // });
 
-app.get('/download', async (req, res) => {
-  const url = req.query.url;
-  const quality = req.query.quality;
-
-  if (!quality) {
-      try {
-          const info = await ytdl.getInfo(url);
-          const formats = ytdl.filterFormats(info.formats, 'videoandaudio');
-          res.render('download', { formats, url });
-      } catch (error) {
-          res.status(400).send('Invalid URL');
-      }
-  } else {
-      res.header('Content-Disposition', 'attachment; filename="video.mp4"');
-      ytdl(url, { filter: format => format.itag === parseInt(quality) })
-          .pipe(res);
-  }
-});
-
 // app.get('/download', async (req, res) => {
 //   const url = req.query.url;
 //   const quality = req.query.quality;
@@ -100,43 +84,58 @@ app.get('/download', async (req, res) => {
 //       try {
 //           const info = await ytdl.getInfo(url);
 //           const formats = ytdl.filterFormats(info.formats, 'videoandaudio');
-//           res.render('download', { formats, url });
+//           // res.render('download', { formats, url });
+//           res.json({formats,url})
 //       } catch (error) {
 //           res.status(400).send('Invalid URL');
 //       }
 //   } else {
-//       try {
-//           const filePath = path.resolve(__dirname, 'downloads', `video-${quality}.mp4`);
-//           await fs.ensureDir(path.dirname(filePath));
-          
-//           // Check if the file already exists
-//           if (!await fs.pathExists(filePath)) {
-//               const stream = ytdl(url, { filter: format => format.itag === parseInt(quality) })
-//                   .pipe(fs.createWriteStream(filePath));
-
-//               stream.on('finish', () => {
-//                   res.download(filePath, 'video.mp4', async (err) => {
-//                       if (err) {
-//                           console.error(err);
-//                       }
-//                       // Optionally delete the file after download
-//                       await fs.remove(filePath);
-//                   });
-//               });
-//           } else {
-//               res.download(filePath, 'video.mp4', async (err) => {
-//                   if (err) {
-//                       console.error(err);
-//                   }
-//                   // Optionally delete the file after download
-//                   await fs.remove(filePath);
-//               });
-//           }
-//       } catch (error) {
-//           res.status(500).send('Error downloading video');
-//       }
+//       res.header('Content-Disposition', 'attachment; filename="video.mp4"');
+//       ytdl(url, { filter: format => format.itag === parseInt(quality) })
+//           .pipe(res);
 //   }
 // });
+
+app.get('/download', async (req, res) => {
+  const url = req.query.url;
+  const quality = req.query.quality || 'hd720';
+
+  if (!url || !quality) {
+      return res.status(400).send('Missing URL or quality parameter');
+  }
+
+  try {
+      const info = await ytdl.getInfo(url);
+      const videoFormat = ytdl.chooseFormat(info.formats, { quality: 'highestaudio' });
+
+      if (!videoFormat) {
+          return res.status(400).send('Video format not found');
+      }
+
+      const filePath = path.resolve(__dirname, 'downloads', `video-${quality}.mp4`);
+      await fs.ensureDir(path.dirname(filePath));
+
+      // Download the video
+      const videoStream = ytdl(url, { format: videoFormat })
+          .pipe(fs.createWriteStream(filePath));
+
+      videoStream.on('finish', () => {
+          res.download(filePath, 'video.mp4', async (err) => {
+              if (err) {
+                  console.error('Error downloading file:', err);
+                  res.status(500).send('Error downloading video');
+              } else {
+                  // Optionally, delete the downloaded file after sending
+                  await fs.unlink(filePath);
+              }
+          });
+      });
+
+  } catch (error) {
+      console.error('Error downloading video:', error);
+      res.status(500).send('Error downloading video');
+  }
+});
 
 app.get('/getVideoInfo', async (req, res) => {
   const videoURL = req.query.url;
